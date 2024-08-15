@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime
-import ruptures as rpt
+from ocpdet import CUSUM
 
 import create_sim_data
 
@@ -44,15 +44,11 @@ for i in range(4):
 xs = date_df["x"].values
 
 # %%
-
-
-# コスト関数の設定
-model = "l2"
-# アルゴの設定と学習
-algo = rpt.Dynp(model=model).fit(xs)
-# 変化点の検出
-my_bkps = algo.predict(n_bkps=3)
-
+model = CUSUM(k=1., h=2., burnin=50, mu=0., sigma=1.)
+model.process(xs)
+my_changepoints = model.changepoints
+# %%
+my_changepoints
 
 # %%
 plt.figure(figsize=(15, 5))
@@ -62,10 +58,9 @@ for tr in start_dates:
     plt.axvline(tr, color="r", linestyle="solid")
 for tr in season_changes:
     plt.axvline(tr, color="r", linestyle="dashed")
-for pr in my_bkps:
+for pr in my_changepoints:
     if len(dates) <= pr:
         continue
     plt.axvline(dates[pr], color="b", linestyle="dashed")
-
 
 # %%
