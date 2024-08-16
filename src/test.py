@@ -2,29 +2,39 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime
+import random
+
 from ocpdet import CUSUM
 
 import create_sim_data
 
-
+random.seed(0)
+np.random.seed(0)
 # %%
-weekday_means = [10, 20, 30, 20]
+# 
+# weekday_means = [10, 20, 30, 20]
+# weekday_range_hs = [5, 5, 10, 10]
+# summer_rates = [1.1, 1.2, 1.3, 1.4]
+# winter_rates = [0.9, 0.8, 0.7, 0.6]
+# shift_days = [2, 10, 20]
+# start_dates = [
+#     datetime.datetime(2020, 10, 1),
+#     datetime.datetime(2021, 4, 1),
+#     datetime.datetime(2021, 10, 1)
+# ]
+weekday_means = [20, 30, 40, 20]
 weekday_range_hs = [5, 5, 10, 10]
-summer_rates = [1.1, 1.2, 1.3, 1.4]
-winter_rates = [0.9, 0.8, 0.7, 0.6]
-shift_days = [2, 10, 20]
+summer_rates = [1.5, 1.5, 1.5, 1.5]
+winter_rates = [0.5, 0.5, 0.5, 0.5]
+shift_days = [2, 2, 2]
 start_dates = [
-    datetime.datetime(2020, 12, 1),
+    datetime.datetime(2020, 10, 1),
     datetime.datetime(2021, 4, 1),
-    datetime.datetime(2021, 12, 1)
-]
-season_changes = [
-    datetime.datetime(2020, 7, 1),
-    datetime.datetime(2021, 1, 1),
-    datetime.datetime(2021, 7, 1),
-    datetime.datetime(2022, 1, 1),
+    datetime.datetime(2021, 10, 1)
 ]
 
+
+# データ生成
 date_df, date_dfs = create_sim_data.create_x_dates(
     weekday_means,
     weekday_range_hs,
@@ -33,15 +43,18 @@ date_df, date_dfs = create_sim_data.create_x_dates(
     shift_days,
     start_dates)
 
+# for i in range(4):
+#     plt.figure(figsize=(15, 5))
+#     plt.plot(date_dfs[i]["date"], date_dfs[i]["x"], label=str(i))
+#     plt.plot(date_df["date"], date_df["x"], label="dst")
+#     plt.legend()
 
-for i in range(4):
-    plt.figure(figsize=(15, 5))
-    plt.plot(date_dfs[i]["day"], date_dfs[i]["x"], label=str(i))
-    plt.plot(date_df["day"], date_df["x"], label="dst")
-    plt.legend()
+# 真の変化点
+true_change_idxs = np.where(date_df["is_change_point"].values==1)[0]
+# データ
+xs = date_df["x"].values
 
 # %%
-xs = date_df["x"].values
 
 # %%
 model = CUSUM(k=1., h=2., burnin=50, mu=0., sigma=1.)
@@ -52,12 +65,12 @@ my_changepoints
 
 # %%
 plt.figure(figsize=(15, 5))
-dates = date_df["day"].values
+dates = date_df["date"].values
 plt.plot(dates, xs) 
-for tr in start_dates:
-    plt.axvline(tr, color="r", linestyle="solid")
-for tr in season_changes:
-    plt.axvline(tr, color="r", linestyle="dashed")
+for idx in true_change_idxs:
+    date = dates[idx]
+    plt.axvline(date, color="r", linestyle="solid")
+
 for pr in my_changepoints:
     if len(dates) <= pr:
         continue
