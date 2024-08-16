@@ -16,13 +16,13 @@ change point detection
     - $\sigma_0^2=1$
     - $S_0=0$
     - $T_0=0$
-1. 新しい値$x_i$が入ってくる
-1. $\mu$と$\sigma^2$を更新
+1. $新しい値x_iが入ってくる$
+1. $\muと\sigma^2を更新$
     - $\mu_i \gets \frac{n-1}{n}\mu_{i-1} + \frac{1}{n}x_i$
     - $\sigma_i^2 \gets \frac{n-2}{n-1}\sigma_{i-1}^2 + \frac{(x_i - \mu_i)(x_{i-1} - \mu_{i-1})}{n-1}$
-1. $x_i$を正規化
+1. $x_iを正規化$
     - $\hat{x}_i \gets \frac{x_i - \mu_i}{\sigma_i} $
-1. $S$と$T$を更新
+1. $SとTを更新$
     - $S_i \gets max(0, S_{i-1} -k + \hat{x}_i)$
     - $T_i \gets max(0, T_{i-1} -k - \hat{x}_i)$
 1. 変化点を検出
