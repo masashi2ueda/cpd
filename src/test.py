@@ -11,7 +11,10 @@ import create_sim_data
 random.seed(0)
 np.random.seed(0)
 # %%
-# 
+####################
+# データ生成
+####################
+# パラメータ
 # weekday_means = [10, 20, 30, 20]
 # weekday_range_hs = [5, 5, 10, 10]
 # summer_rates = [1.1, 1.2, 1.3, 1.4]
@@ -33,7 +36,6 @@ start_dates = [
     datetime.datetime(2021, 10, 1)
 ]
 
-
 # データ生成
 date_df, date_dfs = create_sim_data.create_x_dates(
     weekday_means,
@@ -54,26 +56,40 @@ true_change_idxs = np.where(date_df["is_change_point"].values==1)[0]
 # データ
 xs = date_df["x"].values
 
-# %%
 
 # %%
+def draw_trues():
+    for idx in true_change_idxs:
+        date = dates[idx]
+        plt.axvline(date, color="r", linestyle="solid")
+
+# %%
+####################
+# CUMSUM
+####################
 model = CUSUM(k=1., h=2., burnin=50, mu=0., sigma=1.)
 model.process(xs)
 my_changepoints = model.changepoints
-# %%
-my_changepoints
 
-# %%
-plt.figure(figsize=(15, 5))
+
+plt.figure(figsize=(15, 10))
+plt.subplot(2, 1, 1)
 dates = date_df["date"].values
 plt.plot(dates, xs) 
-for idx in true_change_idxs:
-    date = dates[idx]
-    plt.axvline(date, color="r", linestyle="solid")
-
 for pr in my_changepoints:
     if len(dates) <= pr:
         continue
     plt.axvline(dates[pr], color="b", linestyle="dashed")
+draw_trues()
 
+plt.subplot(2, 1, 2)
+plt.plot(dates, model.S, c="m", label="$S$")
+plt.plot(dates, model.T, c="y", label="$T$")
+plt.axhline(model.h, color="r", linestyle="-", zorder=-10)
+plt.scatter(dates[model.changepoints], len(model.changepoints) * [model.h], marker="v",
+            label="Alarm", color="green")
+plt.xlabel("Time")
+plt.ylabel("$S$ and $T$ statistics")
+plt.legend()
+plt.show()
 # %%
