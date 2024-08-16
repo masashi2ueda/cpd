@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import datetime
 import random
 
-from ocpdet import CUSUM
+from ocpdet import CUSUM, EWMA, TwoSample, NeuralNetwork
+import changefinder
 
 import create_sim_data
 
@@ -59,9 +60,10 @@ xs = date_df["x"].values
 
 # %%
 def draw_trues():
-    for idx in true_change_idxs:
+    for ii, idx in enumerate(true_change_idxs):
         date = dates[idx]
-        plt.axvline(date, color="r", linestyle="solid")
+        label = "true_cp" if ii == 0 else None
+        plt.axvline(date, color="r", linestyle="solid", label=label)
 
 # %%
 ####################
@@ -90,6 +92,98 @@ plt.scatter(dates[model.changepoints], len(model.changepoints) * [model.h], mark
             label="Alarm", color="green")
 plt.xlabel("Time")
 plt.ylabel("$S$ and $T$ statistics")
+draw_trues()
 plt.legend()
-plt.show()
+# %%
+####################
+# EWMA(Exponentially Weighted Moving Average algorithm)
+####################
+model = EWMA(r=0.15, L=2.4, burnin=50, mu=0., sigma=1.)
+model.process(xs)
+my_changepoints = model.changepoints
+
+plt.figure(figsize=(15, 10))
+plt.subplot(2, 1, 1)
+dates = date_df["date"].values
+plt.plot(dates, xs) 
+for pr in my_changepoints:
+    if len(dates) <= pr:
+        continue
+    plt.axvline(dates[pr], color="b", linestyle="dashed")
+draw_trues()
+
+plt.subplot(2, 1, 2)
+plt.scatter(dates, xs, c="b", s=20, alpha=0.2)
+plt.plot(dates, model.Z, c="m", label="$Z$")
+plt.plot(dates, np.asarray(model._mu) + np.asarray(model.sigma_Z) * model.L,
+         c="y", label="$\mu \pm L \sigma_Z$")
+plt.plot(dates, np.asarray(model._mu) - np.asarray(model.sigma_Z) * model.L,
+         c="y")
+plt.scatter(dates[model.changepoints], np.asarray(model.Z)[model.changepoints], marker="v",
+            label="Alarm", color="green", zorder=10)
+plt.xlabel("Time")
+plt.ylabel("Observations")
+draw_trues()
+plt.legend()
+# %%
+####################
+# Two-sample test algorithm
+####################
+model = TwoSample(statistic="Lepage", threshold=3.1)
+model.process(xs)
+my_changepoints = model.changepoints
+
+plt.figure(figsize=(15, 10))
+plt.subplot(2, 1, 1)
+dates = date_df["date"].values
+plt.plot(dates, xs) 
+for pr in my_changepoints:
+    if len(dates) <= pr:
+        continue
+    plt.axvline(dates[pr], color="b", linestyle="dashed")
+draw_trues()
+
+plt.subplot(2, 1, 2)
+plt.plot(dates, model.D, c="m", label="$D$")
+plt.axhline(model.threshold, color="r", linestyle="-", zorder=-10)
+plt.scatter(dates[model.changepoints], len(model.changepoints) * [model.threshold], marker="v",
+            label="Alarm", color="green")
+plt.xlabel("Time")
+plt.ylabel("$D$ statistic")
+plt.legend()
+draw_trues()
+plt.legend()
+# %%
+####################
+# Neural network for changepoint detection algorithm
+####################
+model = NeuralNetwork(k=5, n=10, lag=60, f=None, r=.1, L=2, burnin=100, method="increase", timeout=100)
+model.process(xs)
+my_changepoints = model.changepoints
+
+plt.figure(figsize=(15, 10))
+plt.subplot(2, 1, 1)
+dates = date_df["date"].values
+plt.plot(dates, xs) 
+for pr in my_changepoints:
+    if len(dates) <= pr:
+        continue
+    plt.axvline(dates[pr], color="b", linestyle="dashed")
+draw_trues()
+# %%
+####################
+# change finder
+####################
+cf = changefinder.ChangeFinder(r=0.01, order=1, smooth=7)
+ret = []
+for x in xs:
+    score = cf.update(x)
+    ret.append(score)
+
+plt.figure(figsize=(15, 10))
+plt.subplot(2, 1, 1)
+dates = date_df["date"].values
+plt.plot(dates, xs)
+plt.subplot(2, 1, 2)
+plt.plot(dates, ret)
 # %%
