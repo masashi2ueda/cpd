@@ -26,8 +26,8 @@ change point detection
     - $S_i \gets max(0, S_{i-1} -k + \hat{x}_i)$
     - $T_i \gets max(0, T_{i-1} -k - \hat{x}_i)$
 1. 変化点を検出
-    - $S_i > h$ or $T_i > h$なら$i$は変化点
-    - $i$が変化点の場合は$S_i \gets 0, T_i \gets 0$
+    - $S_i > h もしくは T_i > hならiは変化点$
+    - $iが変化点の場合はS_i \gets 0, T_i \gets 0$
 1. 1に戻る
 ### 解説
 - $値が通常より大きいのをSで、小さいのをTでそれぞれ捉える$
