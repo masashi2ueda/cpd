@@ -125,6 +125,7 @@ plt.xlabel("Time")
 plt.ylabel("Observations")
 draw_trues()
 plt.legend()
+
 # %%
 ####################
 # Two-sample test algorithm
@@ -153,6 +154,52 @@ plt.ylabel("$D$ statistic")
 plt.legend()
 draw_trues()
 plt.legend()
+# %%
+
+# %%
+xs = np.arange(100)
+model = NeuralNetwork(k=5, n=10, lag=20, f=None, r=.1, L=2, burnin=10, method="increase", timeout=100)
+model.process(xs)
+# %%
+print(model.X.shape)
+for i in range(3):
+    print(i, model.X[i])
+
+# %%
+print("model.Xi.shape:", model.Xi.shape)
+for i in range(3):
+    print(f"model.Xi[{i}].shape:", model.Xi[i].shape)
+    for ii in range(3):
+        print(f"model.Xi[{i}][{ii}].shape:", model.Xi[i][ii].shape)
+        print(model.Xi[i][[ii]])
+
+# %%
+from tqdm import tqdm
+import tensorflow as tf
+self = model
+print("len(self.Xi):", len(self.Xi))
+print("self.l :", self.l )
+print("len(self.Xi) - self.l - 1 :", len(self.Xi) - self.l - 1)
+for i in tqdm(range(len(self.Xi) - self.l - 1)):
+    X_lagged = self.Xi[i][tf.newaxis, ...]
+    X_recent = self.Xi[i+self.l][tf.newaxis, ...]
+    print("X_lagged.shape:", X_lagged.shape)
+    print("X_recent.shape:", X_recent.shape)
+    1/0
+    d = tf.math.log((1 - self.f(X_lagged)) / self.f(X_lagged)) + tf.math.log(self.f(X_recent) / (1 - self.f(X_recent)))
+    if i <= self.l + 1:
+        self.dissimilarity.append(0.)
+    else:
+        d_bar = self.dissimilarity[-1] + (d - self.divergence[i-1-self.l]) / self.l
+        self.dissimilarity.append(d_bar.numpy()[0][0])
+    self.divergence.append(d.numpy()[0][0])
+    with tf.GradientTape() as tape:
+        loss_value = - tf.math.log(1 - self.f(X_lagged)) - tf.math.log(self.f(X_recent))
+    grads = tape.gradient(loss_value, self.f.trainable_weights)
+    self.optimiser.apply_gradients(zip(grads, self.f.trainable_weights))
+self.divergence = np.asarray(self.divergence)
+self.dissimilarity = np.asarray(self.dissimilarity)
+
 # %%
 ####################
 # Neural network for changepoint detection algorithm

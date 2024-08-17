@@ -3,7 +3,7 @@ change point detection
 
 ## CUMSUM
 ### お気持ち
-今ままでの値より大きく外れているものが続いたら、変化点。
+今ままでの値より大きく外れているものが続いたら変化点。
 
 ### 擬似コード
 - ハイパーパラメータ
@@ -35,7 +35,7 @@ change point detection
 ## EWMA: Exponentially Weighted Moving Average algorithm
 
 ### お気持ち
-今ままでの値より大きく外れているものがあったら変化点
+今ままでの値より大きく外れているものがあったら変化点(CUMSUMとほぼ一緒)
 
 ### 擬似コード
 - ハイパーパラメータ
@@ -69,19 +69,61 @@ change point detection
     - $s:検定手法(例:Wilcoxonの順位和検定) $
     - $h:検定の閾値$
 
-0. $最後の変化点\tau、最後の変化点からの値群を初期化$
-    - $\tau=0$
+0. $xs値群を初期化$
     - $xs=[]$
 1. $新しい値x_iが入ってくる→xを追加$
     - $xs.append(x_i)$
 1. $現在のxs(サイズ=n)の各変化点候補で検定$
-    1. $k = 1, Ds = []$
-    1. $xs1 = xs[1:k], xs2 = xs[k+1:n]$
-    1. $Ds.appen(xs1とxs2の分布が異なる確率by s)$
-    1. $if k == n: 終了, else: k \gets k+1でiへ$
-    1. $もしmax(Ds)>hなら、Dsが最大の位置が変化点→\tau$
+    1. $Ds = []$
+    1. $kを2からn-2までfor文を回す$
+        1. $kでxsを分割: xs1 = xs[1:k], xs2 = xs[k+1:n]$
+        1. $D(xs1とxs2の分布が異なる確率)=s(xs1, xs2)$
+        1. $Ds.append(D)$
+    1. $もしmax(Ds)>h$
+        - $Dsが最大の位置\tauが変化点: \tau=argmax(Ds)$
+        - $\tauより前のxを削除: xs \gets xs[\tau:]$
 1. 1に戻る
 ### 解説
 - 最後の変化点から現在の値までの各位置で検定する
 - 変化点が見つからないとどんどん計算量が増えていく→xsを保存するサイズの上限を設定する？
 
+## Neural network for changepoint detection algorithm
+
+### お気持ち
+少し前と現在を見分けるNNをオンライン学習する。見分けられたら変化点。
+
+### 擬似コード
+- ハイパーパラメータ
+    - $k:特徴サイズ$
+    - $n:バッチサイズ$
+    - $l:ラグ数$
+    - $f_{\theta}:ニューラルネットワーク, \mathbb{R}^k \mapsto \mathbb{R}$
+
+0.  初期化
+    - $入力データ群: xs=[]$
+    - $カルバックライブラーダイバージェンス群: Ds=[]$
+    - $1つ前のdissimilarity: d_{prev}=None$
+1. $新しい値x_iが入ってくる$
+    - $xsに加える(FIFOでk-1+n+l個分保持する)$
+1. $最近のバッチ(Xr:recent)と過去のバッチ(Xl:lagg)を作成$
+![alt text](image.png)
+
+1. $X_lとX_rのカルバックライブラーダイバージェンス(D)を計算して追加$
+    - $D(\mathcal{X}_l, \mathcal{X}_r) = \frac{1}{n} \sum_{X \in \mathcal{X}_{l}} \log \left\{ \frac{1 - f_{\theta}(X)}{f_{\theta}(X)} \right\} + \frac{1}{n} \sum_{X \in \mathcal{X}_{r}} \log \left\{ \frac{f_{\theta}(X)}{1 - f_{\theta}(X)} \right\}$
+        - $XはX_lやX_rの中の各特徴ベクトル$
+    - $DsにDを加える(FIFOでl+n個分保持しておく)$
+
+1. $dissimilarity(d)を計算して、変化を判断$
+    1. $d=d_{prev}+\frac{D-Ds[-l-n]}{l}$
+    1. $dの値を上で説明したEWMAなどの入力として利用して、変化を判断$
+    1. $d_{prev} \gets d$
+
+1. $nnを学習$
+    1. binary cross-entropy lossを計算
+        - $\mathcal{L}(\mathcal{X}_{r}, \mathcal{X}_{l}) = - \frac{1}{n} \sum_{X \in \mathcal{X}_{l}} \log \{ 1 - f_{\theta}(X) \} - \frac{1}{n} \sum_{X \in \mathcal{X}_{r}} \log \{ f_{\theta}(X) \}.$
+    1. $\mathcal{L}をbakcpropagationして勾配を計算→パラメータを更新$
+
+1. 1に戻る
+### 解説
+- 少し前の値と現在の値を見分けるnnを学習する→良くわ見分けられる場合は変化点にする
+- dissimilarityはカルバックライブラーダイバージェンスをそのまま使わず、ローリングで少し平滑化する
